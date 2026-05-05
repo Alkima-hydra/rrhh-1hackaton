@@ -1,0 +1,14 @@
+.contratoPreview {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 24px;
+}
+
+.contratoPreview pre {
+  font-size: 13px;
+  line-height: 1.8;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  font-family: 'DM Sans', sans-serif;
+}

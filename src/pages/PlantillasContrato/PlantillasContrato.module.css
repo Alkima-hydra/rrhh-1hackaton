@@ -1,0 +1,94 @@
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+.plantillaCard {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.plantillaCard:hover {
+  border-color: var(--border-active);
+  box-shadow: var(--shadow-card);
+}
+
+.cardTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.cardIcon { font-size: 24px; }
+
+.cardName {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.cardPreview {
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  flex: 1;
+}
+
+.cardDate {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.cardActions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding-top: 4px;
+  border-top: 1px solid var(--border);
+}
+
+.variables {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.varChip {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border: 1px solid rgba(79,124,255,0.2);
+  border-radius: 6px;
+  padding: 3px 8px;
+  font-size: 12px;
+  font-family: monospace;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.varChip:hover {
+  background: var(--accent);
+  color: #fff;
+}
+
+.preview {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 20px;
+}
+
+.preview pre {
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  font-family: 'DM Sans', sans-serif;
+}

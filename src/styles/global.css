@@ -1,0 +1,65 @@
+:root {
+  --bg-primary: #ffffff;      /* Fondo principal blanco puro */
+  --bg-secondary: #f8fafc;    /* Fondo sutil para secciones */
+  --bg-card: #f1f5f9;         /* Color de tarjetas o inputs */
+  --bg-hover: #e2e8f0;        /* Estado hover sutil */
+  
+  /* Bordes: Más suaves para no ensuciar el diseño */
+  --border: #e2e8f0;          /* Borde neutro */
+  --border-active: #cbd5e1;   /* Borde al hacer foco */
+
+  /* Acentos: Ajustados para legibilidad sobre blanco */
+  --accent: #2563eb;          /* Un azul un poco más profundo para contraste */
+  --accent-soft: rgba(37, 99, 235, 0.08);
+  --accent-hover: #1d4ed8;
+  
+  /* Estados: Tonos ligeramente más oscuros para cumplir con accesibilidad (WCAG) */
+  --success: #059669;
+  --success-soft: rgba(5, 150, 105, 0.1);
+  --warning: #d97706;
+  --warning-soft: rgba(217, 119, 6, 0.1);
+  --danger: #dc2626;
+  --danger-soft: rgba(220, 38, 38, 0.1);
+
+  /* Texto: Del negro suave al gris metálico */
+  --text-primary: #0f172a;    /* Azul muy oscuro, casi negro */
+  --text-secondary: #475569;  /* Gris azulado para párrafos */
+  --text-muted: #94a3b8;
+
+  --font-display: 'Space Grotesk', sans-serif;
+  --font-body: 'Plus Jakarta Sans', sans-serif;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+
+  --shadow-card: 0 4px 24px rgba(0,0,0,0.35);
+  --shadow-modal: 0 24px 80px rgba(0,0,0,0.6);
+
+  --sidebar-width: 248px;
+  --header-height: 64px;
+
+  --transition: 0.2s cubic-bezier(0.4,0,0.2,1);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body, #root {
+  height: 100%;
+  font-family: var(--font-body);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 14px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+button { cursor: pointer; font-family: inherit; }
+input, select, textarea { font-family: inherit; }
+a { text-decoration: none; color: inherit; }
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-active); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
