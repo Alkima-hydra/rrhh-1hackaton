@@ -8,9 +8,12 @@ import Vacaciones from './pages/Vacaciones/Vacaciones';
 import PlantillasContrato from './pages/PlantillasContrato/PlantillasContrato';
 import Contratos from './pages/Contratos/Contratos';
 import Boletas from './pages/Boletas/Boletas';
+import { Provider } from 'react-redux';
+import { store } from './store';
 
 export default function App() {
   return (
+    <Provider store={store}>
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Layout />}>
@@ -25,5 +28,6 @@ export default function App() {
         </Route>
       </Routes>
     </BrowserRouter>
+    </Provider>
   );
 }
