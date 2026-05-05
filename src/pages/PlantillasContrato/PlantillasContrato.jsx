@@ -93,12 +93,7 @@ export default function PlantillasContrato() {
           + Nueva plantilla
         </button>
       </div>
-
-      <div className={s.statsRow}>
-        <div className={s.statCard}><div className={s.statValue}>{plantillas.length}</div><div className={s.statLabel}>Total plantillas</div></div>
-        <div className={s.statCard}><div className={s.statValue}>{plantillas.filter(p => p.activo).length}</div><div className={s.statLabel}>Activas</div></div>
-      </div>
-
+      
       {loading ? <div className={s.loading}>Cargando...</div> : plantillas.length === 0 ? (
         <div className={s.empty}><div className={s.emptyIcon}>📋</div><div className={s.emptyText}>No hay plantillas</div></div>
       ) : (

@@ -211,14 +211,6 @@ export default function Boletas() {
         </button>
       </div>
 
-      <div className={s.statsRow}>
-        <div className={s.statCard}><div className={s.statValue}>{boletas.length}</div><div className={s.statLabel}>Total boletas</div></div>
-        <div className={s.statCard}><div className={s.statValue}>{pagadas}</div><div className={s.statLabel}>Pagadas</div></div>
-        <div className={s.statCard}>
-          <div className={s.statValue} style={{ fontSize: 18 }}>Bs. {totalPagado.toLocaleString('es-BO', { minimumFractionDigits: 2 })}</div>
-          <div className={s.statLabel}>Total pagado</div>
-        </div>
-      </div>
 
       <div className={s.tableWrapper}>
         <div className={s.tableToolbar}>

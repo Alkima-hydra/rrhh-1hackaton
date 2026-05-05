@@ -138,13 +138,6 @@ export default function Funcionarios() {
         </button>
       </div>
 
-      <div className={s.statsRow}>
-        <div className={s.statCard}><div className={s.statValue}>{funcionarios.length}</div><div className={s.statLabel}>Total</div></div>
-        <div className={s.statCard}><div className={s.statValue}>{activos}</div><div className={s.statLabel}>Activos</div></div>
-        <div className={s.statCard}><div className={s.statValue}>{ratificados}</div><div className={s.statLabel}>Ratificados</div></div>
-        <div className={s.statCard}><div className={s.statValue}>{funcionarios.length - activos}</div><div className={s.statLabel}>Inactivos</div></div>
-      </div>
-
       <div className={s.tableWrapper}>
         <div className={s.tableToolbar}>
           <input className={s.searchInput} placeholder="🔍 Buscar por nombre o CI..." value={search} onChange={e => setSearch(e.target.value)} />

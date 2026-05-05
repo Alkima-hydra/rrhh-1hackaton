@@ -87,11 +87,6 @@ export default function Areas() {
         </button>
       </div>
 
-      <div className={s.statsRow}>
-        <div className={s.statCard}><div className={s.statValue}>{areas.length}</div><div className={s.statLabel}>Total áreas</div></div>
-        <div className={s.statCard}><div className={s.statValue}>{activas}</div><div className={s.statLabel}>Activas</div></div>
-        <div className={s.statCard}><div className={s.statValue}>{areas.length - activas}</div><div className={s.statLabel}>Inactivas</div></div>
-      </div>
 
       <div className={s.tableWrapper}>
         <div className={s.tableToolbar}>

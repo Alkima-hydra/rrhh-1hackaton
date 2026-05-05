@@ -134,10 +134,6 @@ export default function Contratos() {
         </button>
       </div>
 
-      <div className={s.statsRow}>
-        <div className={s.statCard}><div className={s.statValue}>{contratos.length}</div><div className={s.statLabel}>Total contratos</div></div>
-        <div className={s.statCard}><div className={s.statValue}>{contratos.filter(c => c.activo).length}</div><div className={s.statLabel}>Activos</div></div>
-      </div>
 
       <div className={s.tableWrapper}>
         {loading ? <div className={s.loading}>Cargando...</div> :

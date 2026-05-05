@@ -129,12 +129,6 @@ export default function Vacaciones() {
         </button>
       </div>
 
-      <div className={s.statsRow}>
-        <div className={s.statCard}><div className={s.statValue}>{vacaciones.length}</div><div className={s.statLabel}>Total registros</div></div>
-        <div className={s.statCard}><div className={s.statValue}>{pendientes}</div><div className={s.statLabel}>Pendientes</div></div>
-        <div className={s.statCard}><div className={s.statValue}>{aprobadas}</div><div className={s.statLabel}>Aprobadas</div></div>
-      </div>
-
       <div className={s.tableWrapper}>
         <div className={s.tableToolbar}>
           <input className={s.searchInput} placeholder="🔍 Buscar funcionario..." value={search} onChange={e => setSearch(e.target.value)} />

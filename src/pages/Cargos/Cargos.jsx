@@ -87,11 +87,6 @@ export default function Cargos() {
         </button>
       </div>
 
-      <div className={s.statsRow}>
-        <div className={s.statCard}><div className={s.statValue}>{cargos.length}</div><div className={s.statLabel}>Total cargos</div></div>
-        <div className={s.statCard}><div className={s.statValue}>{cargos.filter(c => c.activo).length}</div><div className={s.statLabel}>Activos</div></div>
-        <div className={s.statCard}><div className={s.statValue}>{areas.length}</div><div className={s.statLabel}>Áreas</div></div>
-      </div>
 
       <div className={s.tableWrapper}>
         <div className={s.tableToolbar}>
