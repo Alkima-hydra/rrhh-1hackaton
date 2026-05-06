@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import Modal from '../../components/Modal/Modal';
-import * as store from '../../data/store';
+import { cargosService } from '../../lib/cargos.service';
 import s from '../../styles/shared.module.css';
 
 function CargoForm({ initial, areas, onSave, onCancel }) {
@@ -52,8 +52,9 @@ export default function Cargos() {
 
   const load = async () => {
     setLoading(true);
-    const [c, a] = await Promise.all([store.getCargos(), store.getAreas()]);
-    setCargos(c); setAreas(a); setLoading(false);
+    const c = await cargosService.getAll();
+    setCargos(c.data.cargos ?? []);
+    setLoading(false);
   };
   useEffect(() => { load(); }, []);
 
@@ -65,14 +66,19 @@ export default function Cargos() {
   const getArea = (id) => areas.find(a => a.id_area === id);
 
   const handleSave = async (form) => {
-    if (modal.data?.id_cargo) await store.updateCargo(modal.data.id_cargo, form);
-    else await store.createCargo(form);
-    setModal(null); load();
+    if (modal.data?.id_cargo) {
+      await cargosService.update(modal.data.id_cargo, form);
+    } else {
+      await cargosService.create(form);
+    }
+    setModal(null);
+    load();
   };
 
   const handleDelete = async () => {
-    await store.deleteCargo(modal.data.id_cargo);
-    setModal(null); load();
+    await cargosService.desactivar(modal.data.id_cargo);
+    setModal(null);
+    load();
   };
 
   return (
