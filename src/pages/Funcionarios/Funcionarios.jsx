@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import Modal from '../../components/Modal/Modal';
-import * as store from '../../data/store';
 import s from '../../styles/shared.module.css';
+import { funcionariosService } from '../../lib/funcionarios.service';
+import { cargosService } from '../../lib/cargos.service';
 
 const EMPTY = {
   nombres: '', apellidos: '', ci: '', correo: '', telefono: '',
@@ -99,8 +100,13 @@ export default function Funcionarios() {
 
   const load = async () => {
     setLoading(true);
-    const [f, a, c] = await Promise.all([store.getFuncionarios(), store.getAreas(), store.getCargos()]);
-    setFuncionarios(f); setAreas(a); setCargos(c); setLoading(false);
+    const [f, c] = await Promise.all([
+      funcionariosService.getAll(),
+      cargosService.getAll(),
+    ]);
+    setFuncionarios(f.data.funcionarios ?? []);
+    setCargos(c.data.cargos ?? []);
+    setLoading(false);
   };
   useEffect(() => { load(); }, []);
 
@@ -112,15 +118,25 @@ export default function Funcionarios() {
   const getCargo = (id) => cargos.find(c => c.id_cargo === id);
 
   const handleSave = async (form) => {
-    const data = { ...form, id_area: form.id_area || null, id_cargo: form.id_cargo || null, remuneracion: parseFloat(form.remuneracion) };
-    if (modal.data?.id_funcionario) await store.updateFuncionario(modal.data.id_funcionario, data);
-    else await store.createFuncionario(data);
-    setModal(null); load();
+    const data = {
+      ...form,
+      id_area: form.id_area || null,
+      id_cargo: form.id_cargo || null,
+      remuneracion: parseFloat(form.remuneracion),
+    };
+    if (modal.data?.id_funcionario) {
+      await funcionariosService.update(modal.data.id_funcionario, data);
+    } else {
+      await funcionariosService.create(data);
+    }
+    setModal(null);
+    load();
   };
 
   const handleDelete = async () => {
-    await store.deleteFuncionario(modal.data.id_funcionario);
-    setModal(null); load();
+    await funcionariosService.darDeBaja(modal.data.id_funcionario);
+    setModal(null);
+    load();
   };
 
   const activos = funcionarios.filter(f => f.activo).length;
