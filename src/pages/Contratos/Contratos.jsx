@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import Modal from '../../components/Modal/Modal';
-import * as store from '../../data/store';
+import * as api from '../../lib/api.contratos';
 import s from '../../styles/shared.module.css';
 import styles from './Contratos.module.css';
 
@@ -102,13 +102,26 @@ export default function Contratos() {
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(null);
   const [viewContrato, setViewContrato] = useState(null);
-
+  useEffect(() => { 
+    load(); 
+  }, []);
   const load = async () => {
-    setLoading(true);
-    const [c, f, p, ca] = await Promise.all([store.getContratos(), store.getFuncionarios(), store.getPlantillas(), store.getCargos()]);
-    setContratos(c); setFuncionarios(f); setPlantillas(p); setCargos(ca); setLoading(false);
+    try {
+      setLoading(true);
+
+      const [c] = await Promise.all([
+        api.getContratos(),
+      ]);
+
+      console.log("CONTRATOS:", c);
+      setContratos(c);
+
+    } catch (error) {
+      console.error("Error cargando datos:", error);
+    } finally {
+      setLoading(false); 
+    }
   };
-  useEffect(() => { load(); }, []);
 
   const getFunc = (id) => funcionarios.find(f => f.id_funcionario === id);
   const getPlantilla = (id) => plantillas.find(p => p.id_plantilla === id);
@@ -154,7 +167,28 @@ export default function Contratos() {
                     <td><span className={`${s.badge} ${c.activo ? s.badgeSuccess : s.badgeDanger}`}>{c.activo ? 'Activo' : 'Inactivo'}</span></td>
                     <td>
                       <div className={s.actions}>
-                        <button className={`${s.btn} ${s.btnSecondary} ${s.btnSm}`} onClick={() => setViewContrato(c)}>👁 Ver</button>
+                      <button
+                          onClick={async () => {
+                            try {
+                                      const datos = {
+          nombres: "Carlos Mendoza",
+          fecha_ingreso: "2024-01-15",
+          salario: "3500.50",
+          tiempo_prueba: "3 meses",
+          activo: true,
+          ciudad: "La Paz",
+          empresa: "Empresa S.A."
+        };
+                              const blob = await api.mostrarCertificado(datos, "contrato-rellenable"); 
+                              const url = window.URL.createObjectURL(blob);
+                              window.open(url); // abre el PDF en nueva pestaña
+                            } catch (err) {
+                              console.error("Error al mostrar PDF", err);
+                            }
+                          }}
+                        >
+                          👁 Ver PDF
+                        </button>
                         <button className={`${s.btn} ${s.btnSecondary} ${s.btnSm}`} onClick={() => setModal({ mode: 'edit', data: c })}>✏️</button>
                         <button className={`${s.btn} ${s.btnDanger} ${s.btnSm}`} onClick={() => setModal({ mode: 'delete', data: c })}>🗑️</button>
                       </div>

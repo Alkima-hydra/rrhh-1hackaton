@@ -1,16 +1,32 @@
 import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import Swal from 'sweetalert2';
 
 import Modal from '../../components/Modal/Modal';
 import s from '../../styles/shared.module.css';
 
 import {
-  fetchVacaciones,
+   fetchVacaciones,
+
   createVacacion,
+
   updateEstadoVacacion,
+
+  fetchDisponibilidadVacaciones,
+
   selectVacaciones,
+
   selectVacacionesLoading,
+
   selectVacacionesError,
+
+  selectDisponibilidadVacaciones,
+
+  selectDisponibilidadVacacionesLoading,
+
+  selectDisponibilidadVacacionesError,
+
+
 } from '../../store/slice/vacacionesSlice';
 
 import {
@@ -26,7 +42,29 @@ const EMPTY = {
   fecha_fin: '',
 };
 
-function VacacionForm({ funcionarios, onSave, onCancel }) {
+const calcularDiasEntreFechas = (fechaInicio, fechaFin) => {
+  if (!fechaInicio || !fechaFin) return '';
+
+  const inicio = new Date(fechaInicio);
+  const fin = new Date(fechaFin);
+
+  inicio.setHours(0, 0, 0, 0);
+  fin.setHours(0, 0, 0, 0);
+
+  const dias = Math.floor((fin - inicio) / (1000 * 60 * 60 * 24)) + 1;
+
+  return dias > 0 ? dias : '';
+};
+
+function VacacionForm({
+  funcionarios,
+  disponibilidad,
+  loadingDisponibilidad,
+  errorDisponibilidad,
+  onFuncionarioChange,
+  onSave,
+  onCancel,
+}) {
   const [form, setForm] = useState(EMPTY);
 
   const set = (key, value) => {
@@ -36,61 +74,183 @@ function VacacionForm({ funcionarios, onSave, onCancel }) {
     }));
   };
 
+  const handleFuncionarioChange = (value) => {
+    setForm((prev) => ({
+      ...prev,
+      id_funcionario: value,
+      dias_solicitados: '',
+      fecha_inicio: '',
+      fecha_fin: '',
+    }));
+
+    if (value) {
+      onFuncionarioChange(value);
+    }
+  };
+
+  const handleFechaInicio = (value) => {
+    const dias = calcularDiasEntreFechas(value, form.fecha_fin);
+
+    setForm((prev) => ({
+      ...prev,
+      fecha_inicio: value,
+      dias_solicitados: dias,
+    }));
+  };
+
+  const handleFechaFin = (value) => {
+    const dias = calcularDiasEntreFechas(form.fecha_inicio, value);
+
+    setForm((prev) => ({
+      ...prev,
+      fecha_fin: value,
+      dias_solicitados: dias,
+    }));
+  };
+
+  const diasSolicitados = Number(form.dias_solicitados || 0);
+  const diasDisponibles = Number(disponibilidad?.dias_disponibles || 0);
+
+  const excedeDias =
+    disponibilidad && diasSolicitados > diasDisponibles;
+
+  const sinDisponibilidad =
+    disponibilidad && diasDisponibles <= 0;
+
   const valid =
     form.id_funcionario &&
     form.dias_solicitados &&
-    Number(form.dias_solicitados) > 0 &&
+    diasSolicitados > 0 &&
     form.fecha_inicio &&
-    form.fecha_fin;
+    form.fecha_fin &&
+    disponibilidad &&
+    !excedeDias &&
+    !sinDisponibilidad;
 
   return (
     <>
       <div className={s.formGrid}>
         <div className={`${s.field} ${s.formGridFull}`}>
           <label className={`${s.label} ${s.required}`}>Funcionario</label>
+
           <select
             className={s.select}
             value={form.id_funcionario}
-            onChange={(e) => set('id_funcionario', e.target.value)}
+            onChange={(e) => handleFuncionarioChange(e.target.value)}
           >
             <option value="">Seleccionar funcionario...</option>
+
             {funcionarios.map((f) => (
               <option key={f.id_funcionario} value={f.id_funcionario}>
                 {f.nombres} {f.apellidos}
               </option>
             ))}
           </select>
-        </div>
 
-        <div className={s.field}>
-          <label className={`${s.label} ${s.required}`}>Días solicitados</label>
-          <input
-            className={s.input}
-            type="number"
-            min="1"
-            value={form.dias_solicitados}
-            onChange={(e) => set('dias_solicitados', e.target.value)}
-          />
+          {loadingDisponibilidad && (
+            <div style={{ marginTop: 10, fontSize: 13 }}>
+              Consultando disponibilidad...
+            </div>
+          )}
+
+          {disponibilidad && (
+            <div
+              style={{
+                marginTop: 12,
+                padding: 12,
+                borderRadius: 12,
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                display: 'grid',
+                gridTemplateColumns: 'repeat(4, 1fr)',
+                gap: 10,
+              }}
+            >
+              <div>
+                <strong>Antigüedad</strong>
+                <div>{disponibilidad.anios_antiguedad} años</div>
+              </div>
+
+              <div>
+                <strong>Generados</strong>
+                <div>{disponibilidad.dias_generados} días</div>
+              </div>
+
+              <div>
+                <strong>Usados</strong>
+                <div>{disponibilidad.dias_usados} días</div>
+              </div>
+
+              <div>
+                <strong>Disponibles</strong>
+                <div>{disponibilidad.dias_disponibles} días</div>
+              </div>
+            </div>
+          )}
+          {errorDisponibilidad && (
+  <div
+    style={{
+      marginTop: 10,
+      padding: 10,
+      borderRadius: 10,
+      background: '#fef2f2',
+      color: '#dc2626',
+      fontSize: 13,
+      border: '1px solid #fecaca',
+    }}
+  >
+    {errorDisponibilidad}
+  </div>
+)}
+
+          {sinDisponibilidad && (
+            <div style={{ marginTop: 10, color: '#dc2626', fontSize: 13 }}>
+              Este funcionario no tiene días disponibles para solicitar vacaciones.
+            </div>
+          )}
         </div>
 
         <div className={s.field}>
           <label className={`${s.label} ${s.required}`}>Fecha inicio</label>
+
           <input
             className={s.input}
             type="date"
             value={form.fecha_inicio}
-            onChange={(e) => set('fecha_inicio', e.target.value)}
+            disabled={!disponibilidad || sinDisponibilidad}
+            onChange={(e) => handleFechaInicio(e.target.value)}
           />
         </div>
 
         <div className={s.field}>
           <label className={`${s.label} ${s.required}`}>Fecha fin</label>
+
           <input
             className={s.input}
             type="date"
             value={form.fecha_fin}
-            onChange={(e) => set('fecha_fin', e.target.value)}
+            min={form.fecha_inicio || undefined}
+            disabled={!disponibilidad || sinDisponibilidad}
+            onChange={(e) => handleFechaFin(e.target.value)}
           />
+        </div>
+
+        <div className={s.field}>
+          <label className={`${s.label} ${s.required}`}>Días solicitados</label>
+
+          <input
+            className={s.input}
+            type="number"
+            value={form.dias_solicitados}
+            readOnly
+            style={{ opacity: 0.7 }}
+          />
+
+          {excedeDias && (
+            <div style={{ marginTop: 8, color: '#dc2626', fontSize: 13 }}>
+              Los días solicitados superan los días disponibles.
+            </div>
+          )}
         </div>
       </div>
 
@@ -137,7 +297,15 @@ export default function Vacaciones() {
   const loadingVacaciones = useSelector(selectVacacionesLoading);
   const loadingFuncionarios = useSelector(selectFuncionariosLoading);
   const error = useSelector(selectVacacionesError);
+  const errorDisponibilidad = useSelector(
+  selectDisponibilidadVacacionesError
+);
 
+  const disponibilidad = useSelector(selectDisponibilidadVacaciones);
+
+const loadingDisponibilidad = useSelector(
+  selectDisponibilidadVacacionesLoading
+);
   const loading = loadingVacaciones || loadingFuncionarios;
 
   const [search, setSearch] = useState('');
@@ -164,28 +332,74 @@ export default function Vacaciones() {
   });
 
   const handleSave = async (form) => {
-    const payload = {
-      id_funcionario: Number(form.id_funcionario),
-      dias_solicitados: Number(form.dias_solicitados),
-      fecha_inicio: form.fecha_inicio,
-      fecha_fin: form.fecha_fin,
-    };
+    try {
+      const diasCalculados = calcularDiasEntreFechas(
+        form.fecha_inicio,
+        form.fecha_fin
+      );
 
-    await dispatch(createVacacion(payload)).unwrap();
+      if (!diasCalculados || diasCalculados <= 0) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Fechas inválidas',
+          text: 'La fecha fin no puede ser menor que la fecha inicio.',
+        });
+        return;
+      }
 
-    setModal(null);
-    dispatch(fetchVacaciones());
+      const payload = {
+        id_funcionario: Number(form.id_funcionario),
+        dias_solicitados: Number(diasCalculados),
+        fecha_inicio: form.fecha_inicio,
+        fecha_fin: form.fecha_fin,
+      };
+
+      await dispatch(createVacacion(payload)).unwrap();
+
+      Swal.fire({
+        icon: 'success',
+        title: 'Solicitud registrada',
+        text: 'La solicitud de vacaciones fue registrada correctamente.',
+        timer: 1800,
+        showConfirmButton: false,
+      });
+
+      setModal(null);
+      dispatch(fetchVacaciones());
+    } catch (error) {
+      Swal.fire({
+        icon: 'error',
+        title: 'No se pudo registrar',
+        text: error || 'Ocurrió un error al registrar la solicitud.',
+      });
+    }
   };
 
   const handleCambiarEstado = async (idVacacion, estado) => {
-    await dispatch(
-      updateEstadoVacacion({
-        id: idVacacion,
-        estado,
-      })
-    ).unwrap();
+    try {
+      await dispatch(
+        updateEstadoVacacion({
+          id: idVacacion,
+          estado,
+        })
+      ).unwrap();
 
-    dispatch(fetchVacaciones());
+      Swal.fire({
+        icon: 'success',
+        title: 'Estado actualizado',
+        text: `La solicitud fue ${estado} correctamente.`,
+        timer: 1600,
+        showConfirmButton: false,
+      });
+
+      dispatch(fetchVacaciones());
+    } catch (error) {
+      Swal.fire({
+        icon: 'error',
+        title: 'No se pudo actualizar',
+        text: error || 'Ocurrió un error al cambiar el estado.',
+      });
+    }
   };
 
   const pendientes = vacaciones.filter((v) => v.estado === 'pendiente').length;
@@ -286,17 +500,9 @@ export default function Vacaciones() {
                     <td>{v.gestion}</td>
                     <td>{v.dias_disponibles}</td>
                     <td>{v.dias_solicitados}</td>
+                    <td style={{ fontWeight: 600 }}>{v.dias_restantes}</td>
 
-                    <td style={{ fontWeight: 600 }}>
-                      {v.dias_restantes}
-                    </td>
-
-                    <td
-                      style={{
-                        color: 'var(--text-secondary)',
-                        fontSize: 12,
-                      }}
-                    >
+                    <td style={{ color: 'var(--text-secondary)', fontSize: 12 }}>
                       {v.fecha_inicio
                         ? `${v.fecha_inicio} → ${v.fecha_fin || '?'}`
                         : '—'}
@@ -331,12 +537,7 @@ export default function Vacaciones() {
                             </button>
                           </>
                         ) : (
-                          <span
-                            style={{
-                              color: 'var(--text-secondary)',
-                              fontSize: 12,
-                            }}
-                          >
+                          <span style={{ color: 'var(--text-secondary)', fontSize: 12 }}>
                             Sin acciones
                           </span>
                         )}
@@ -357,10 +558,16 @@ export default function Vacaciones() {
         large
       >
         <VacacionForm
-          funcionarios={funcionarios}
-          onSave={handleSave}
-          onCancel={() => setModal(null)}
-        />
+  funcionarios={funcionarios}
+  disponibilidad={disponibilidad}
+  loadingDisponibilidad={loadingDisponibilidad}
+  errorDisponibilidad={errorDisponibilidad}
+  onFuncionarioChange={(idFuncionario) => {
+    dispatch(fetchDisponibilidadVacaciones(idFuncionario));
+  }}
+  onSave={handleSave}
+  onCancel={() => setModal(null)}
+/>
       </Modal>
     </div>
   );
