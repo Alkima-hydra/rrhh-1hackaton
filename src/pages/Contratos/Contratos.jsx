@@ -170,7 +170,16 @@ export default function Contratos() {
                       <button
                           onClick={async () => {
                             try {
-                              const blob = await api.mostrarCertificado(c, "contrato-rellenable"); 
+                                      const datos = {
+          nombres: "Carlos Mendoza",
+          fecha_ingreso: "2024-01-15",
+          salario: "3500.50",
+          tiempo_prueba: "3 meses",
+          activo: true,
+          ciudad: "La Paz",
+          empresa: "Empresa S.A."
+        };
+                              const blob = await api.mostrarCertificado(datos, "contrato-rellenable"); 
                               const url = window.URL.createObjectURL(blob);
                               window.open(url); // abre el PDF en nueva pestaña
                             } catch (err) {
