@@ -56,6 +56,23 @@ export const updateEstadoVacacion = createAsyncThunk(
     }
   }
 );
+export const fetchDisponibilidadVacaciones = createAsyncThunk(
+  'vacaciones/fetchDisponibilidadVacaciones',
+  async (idFuncionario, { rejectWithValue }) => {
+    try {
+      const data =
+        await vacacionesService.obtenerDisponibilidad(idFuncionario);
+
+      return data;
+    } catch (error) {
+      return rejectWithValue(
+        error?.response?.data?.msg ||
+        error?.message ||
+        'Error al obtener disponibilidad'
+      );
+    }
+  }
+);
 
 // =========================
 // SLICE
@@ -67,6 +84,9 @@ const vacacionesSlice = createSlice({
     items: [],
     loading: false,
     error: null,
+    errorDisponibilidad: null,
+    disponibilidad: null,
+    loadingDisponibilidad: false,
   },
   reducers: {
     clearVacacionesError: (state) => {
@@ -106,7 +126,22 @@ const vacacionesSlice = createSlice({
         if (idx !== -1) {
           state.items[idx] = payload;
         }
-      });
+      })
+      // FETCH DISPONIBILIDAD
+        .addCase(fetchDisponibilidadVacaciones.pending, (state) => {
+            state.loadingDisponibilidad = true;
+            state.disponibilidad = null;
+            state.errorDisponibilidad = null;
+        })
+        .addCase(fetchDisponibilidadVacaciones.fulfilled, (state, { payload }) => {
+            state.loadingDisponibilidad = false;
+            state.disponibilidad = payload;
+        })
+        .addCase(fetchDisponibilidadVacaciones.rejected, (state, { payload }) => {
+        state.loadingDisponibilidad = false;
+        state.disponibilidad = null;
+        state.errorDisponibilidad = payload;
+        });
   },
 });
 
@@ -122,6 +157,14 @@ export const selectVacacionesLoading = (state) =>
 
 export const selectVacacionesError = (state) =>
   state.vacaciones.error;
+export const selectDisponibilidadVacaciones = (state) =>
+  state.vacaciones.disponibilidad;
+
+export const selectDisponibilidadVacacionesLoading = (state) =>
+  state.vacaciones.loadingDisponibilidad;
+
+export const selectDisponibilidadVacacionesError = (state) =>
+  state.vacaciones.errorDisponibilidad;
 
 export const { clearVacacionesError } =
   vacacionesSlice.actions;

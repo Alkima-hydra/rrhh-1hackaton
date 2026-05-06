@@ -6,12 +6,27 @@ import Modal from '../../components/Modal/Modal';
 import s from '../../styles/shared.module.css';
 
 import {
-  fetchVacaciones,
+   fetchVacaciones,
+
   createVacacion,
+
   updateEstadoVacacion,
+
+  fetchDisponibilidadVacaciones,
+
   selectVacaciones,
+
   selectVacacionesLoading,
+
   selectVacacionesError,
+
+  selectDisponibilidadVacaciones,
+
+  selectDisponibilidadVacacionesLoading,
+
+  selectDisponibilidadVacacionesError,
+
+
 } from '../../store/slice/vacacionesSlice';
 
 import {
@@ -41,7 +56,15 @@ const calcularDiasEntreFechas = (fechaInicio, fechaFin) => {
   return dias > 0 ? dias : '';
 };
 
-function VacacionForm({ funcionarios, onSave, onCancel }) {
+function VacacionForm({
+  funcionarios,
+  disponibilidad,
+  loadingDisponibilidad,
+  errorDisponibilidad,
+  onFuncionarioChange,
+  onSave,
+  onCancel,
+}) {
   const [form, setForm] = useState(EMPTY);
 
   const set = (key, value) => {
@@ -49,6 +72,20 @@ function VacacionForm({ funcionarios, onSave, onCancel }) {
       ...prev,
       [key]: value,
     }));
+  };
+
+  const handleFuncionarioChange = (value) => {
+    setForm((prev) => ({
+      ...prev,
+      id_funcionario: value,
+      dias_solicitados: '',
+      fecha_inicio: '',
+      fecha_fin: '',
+    }));
+
+    if (value) {
+      onFuncionarioChange(value);
+    }
   };
 
   const handleFechaInicio = (value) => {
@@ -71,55 +108,136 @@ function VacacionForm({ funcionarios, onSave, onCancel }) {
     }));
   };
 
+  const diasSolicitados = Number(form.dias_solicitados || 0);
+  const diasDisponibles = Number(disponibilidad?.dias_disponibles || 0);
+
+  const excedeDias =
+    disponibilidad && diasSolicitados > diasDisponibles;
+
+  const sinDisponibilidad =
+    disponibilidad && diasDisponibles <= 0;
+
   const valid =
     form.id_funcionario &&
     form.dias_solicitados &&
-    Number(form.dias_solicitados) > 0 &&
+    diasSolicitados > 0 &&
     form.fecha_inicio &&
-    form.fecha_fin;
+    form.fecha_fin &&
+    disponibilidad &&
+    !excedeDias &&
+    !sinDisponibilidad;
 
   return (
     <>
       <div className={s.formGrid}>
         <div className={`${s.field} ${s.formGridFull}`}>
           <label className={`${s.label} ${s.required}`}>Funcionario</label>
+
           <select
             className={s.select}
             value={form.id_funcionario}
-            onChange={(e) => set('id_funcionario', e.target.value)}
+            onChange={(e) => handleFuncionarioChange(e.target.value)}
           >
             <option value="">Seleccionar funcionario...</option>
+
             {funcionarios.map((f) => (
               <option key={f.id_funcionario} value={f.id_funcionario}>
                 {f.nombres} {f.apellidos}
               </option>
             ))}
           </select>
+
+          {loadingDisponibilidad && (
+            <div style={{ marginTop: 10, fontSize: 13 }}>
+              Consultando disponibilidad...
+            </div>
+          )}
+
+          {disponibilidad && (
+            <div
+              style={{
+                marginTop: 12,
+                padding: 12,
+                borderRadius: 12,
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                display: 'grid',
+                gridTemplateColumns: 'repeat(4, 1fr)',
+                gap: 10,
+              }}
+            >
+              <div>
+                <strong>Antigüedad</strong>
+                <div>{disponibilidad.anios_antiguedad} años</div>
+              </div>
+
+              <div>
+                <strong>Generados</strong>
+                <div>{disponibilidad.dias_generados} días</div>
+              </div>
+
+              <div>
+                <strong>Usados</strong>
+                <div>{disponibilidad.dias_usados} días</div>
+              </div>
+
+              <div>
+                <strong>Disponibles</strong>
+                <div>{disponibilidad.dias_disponibles} días</div>
+              </div>
+            </div>
+          )}
+          {errorDisponibilidad && (
+  <div
+    style={{
+      marginTop: 10,
+      padding: 10,
+      borderRadius: 10,
+      background: '#fef2f2',
+      color: '#dc2626',
+      fontSize: 13,
+      border: '1px solid #fecaca',
+    }}
+  >
+    {errorDisponibilidad}
+  </div>
+)}
+
+          {sinDisponibilidad && (
+            <div style={{ marginTop: 10, color: '#dc2626', fontSize: 13 }}>
+              Este funcionario no tiene días disponibles para solicitar vacaciones.
+            </div>
+          )}
         </div>
 
         <div className={s.field}>
           <label className={`${s.label} ${s.required}`}>Fecha inicio</label>
+
           <input
             className={s.input}
             type="date"
             value={form.fecha_inicio}
+            disabled={!disponibilidad || sinDisponibilidad}
             onChange={(e) => handleFechaInicio(e.target.value)}
           />
         </div>
 
         <div className={s.field}>
           <label className={`${s.label} ${s.required}`}>Fecha fin</label>
+
           <input
             className={s.input}
             type="date"
             value={form.fecha_fin}
             min={form.fecha_inicio || undefined}
+            disabled={!disponibilidad || sinDisponibilidad}
             onChange={(e) => handleFechaFin(e.target.value)}
           />
         </div>
 
         <div className={s.field}>
           <label className={`${s.label} ${s.required}`}>Días solicitados</label>
+
           <input
             className={s.input}
             type="number"
@@ -127,6 +245,12 @@ function VacacionForm({ funcionarios, onSave, onCancel }) {
             readOnly
             style={{ opacity: 0.7 }}
           />
+
+          {excedeDias && (
+            <div style={{ marginTop: 8, color: '#dc2626', fontSize: 13 }}>
+              Los días solicitados superan los días disponibles.
+            </div>
+          )}
         </div>
       </div>
 
@@ -173,7 +297,15 @@ export default function Vacaciones() {
   const loadingVacaciones = useSelector(selectVacacionesLoading);
   const loadingFuncionarios = useSelector(selectFuncionariosLoading);
   const error = useSelector(selectVacacionesError);
+  const errorDisponibilidad = useSelector(
+  selectDisponibilidadVacacionesError
+);
 
+  const disponibilidad = useSelector(selectDisponibilidadVacaciones);
+
+const loadingDisponibilidad = useSelector(
+  selectDisponibilidadVacacionesLoading
+);
   const loading = loadingVacaciones || loadingFuncionarios;
 
   const [search, setSearch] = useState('');
@@ -426,10 +558,16 @@ export default function Vacaciones() {
         large
       >
         <VacacionForm
-          funcionarios={funcionarios}
-          onSave={handleSave}
-          onCancel={() => setModal(null)}
-        />
+  funcionarios={funcionarios}
+  disponibilidad={disponibilidad}
+  loadingDisponibilidad={loadingDisponibilidad}
+  errorDisponibilidad={errorDisponibilidad}
+  onFuncionarioChange={(idFuncionario) => {
+    dispatch(fetchDisponibilidadVacaciones(idFuncionario));
+  }}
+  onSave={handleSave}
+  onCancel={() => setModal(null)}
+/>
       </Modal>
     </div>
   );
