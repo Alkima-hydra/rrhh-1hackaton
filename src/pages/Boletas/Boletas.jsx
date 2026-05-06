@@ -1,104 +1,697 @@
-import { useState, useEffect } from 'react';
-import Modal from '../../components/Modal/Modal';
-import * as store from '../../data/store';
-import s from '../../styles/shared.module.css';
-import styles from './Boletas.module.css';
+import { useEffect, useState } from "react";
+import Swal from "sweetalert2";
+import { FaEye, FaEnvelope, FaPlus, FaTimes, FaCheckCircle } from "react-icons/fa";
+import Modal from "../../components/Modal/Modal";
+import { boletasService } from "../../lib/pagos.api";
+import s from "../../styles/shared.module.css";
+import styles from "./Boletas.module.css";
 
-const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-const TIPOS = ['bono', 'descuento'];
-const ESTADOS_BOLETA = ['generada', 'pagada', 'anulada'];
+const MESES = [
+  "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+  "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+];
 
-const EMPTY_BOLETA = { id_funcionario: '', mes: new Date().getMonth() + 1, gestion: new Date().getFullYear(), sueldo_basico: '', total_bonos: 0, total_descuentos: 0, total_pagado: '', fecha_pago: '', estado: 'generada' };
-const EMPTY_DETALLE = { tipo: 'bono', concepto: '', monto: '' };
+const CONCEPTOS_BONO = [
+  "Bono de puntualidad",
+  "Bono de productividad",
+  "Bono de transporte",
+  "Bono extraordinario",
+  "Otro"
+];
 
-function BoletaForm({ initial, funcionarios, onSave, onCancel }) {
-  const [form, setForm] = useState({ ...EMPTY_BOLETA, ...initial });
+const CONCEPTOS_DESCUENTO = [
+  "Aporte laboral",
+  "Descuento por atraso",
+  "Descuento por falta",
+  "Anticipo de sueldo",
+  "Otro"
+];
+
+const EMPTY_BOLETA = {
+  id_funcionario: "",
+  mes: new Date().getMonth() + 1,
+  gestion: new Date().getFullYear(),
+  sueldo_basico: "",
+  enviarCorreo: true,
+};
+
+const EMPTY_DETALLE = {
+  tipo: "bono",
+  concepto: "Bono de puntualidad",
+  conceptoOtro: "",
+  monto: "",
+};
+
+const formatoBs = (valor) => `Bs. ${Number(valor || 0).toFixed(2)}`;
+
+function BoletaForm({ funcionarios, onSave, onCancel }) {
+  const [form, setForm] = useState(EMPTY_BOLETA);
   const [detalles, setDetalles] = useState([]);
-  const [newDet, setNewDet] = useState({ ...EMPTY_DETALLE });
-  const setF = (k, v) => setForm(f => {
-    const u = { ...f, [k]: v };
-    const bonos = detalles.filter(d => d.tipo === 'bono').reduce((a, d) => a + Number(d.monto), 0);
-    const desc = detalles.filter(d => d.tipo === 'descuento').reduce((a, d) => a + Number(d.monto), 0);
-    u.total_bonos = bonos;
-    u.total_descuentos = desc;
-    u.total_pagado = (Number(u.sueldo_basico) + bonos - desc).toFixed(2);
-    return u;
-  });
+  const [nuevoDetalle, setNuevoDetalle] = useState(EMPTY_DETALLE);
 
-  // recalculate when detalles change
+  const funcionarioSeleccionado = funcionarios.find(
+    (f) => Number(f.id_funcionario) === Number(form.id_funcionario)
+  );
+
   useEffect(() => {
-    const bonos = detalles.filter(d => d.tipo === 'bono').reduce((a, d) => a + Number(d.monto), 0);
-    const desc = detalles.filter(d => d.tipo === 'descuento').reduce((a, d) => a + Number(d.monto), 0);
-    setForm(f => ({ ...f, total_bonos: bonos, total_descuentos: desc, total_pagado: (Number(f.sueldo_basico) + bonos - desc).toFixed(2) }));
-  }, [detalles]);
+    if (funcionarioSeleccionado) {
+      setForm((prev) => ({
+        ...prev,
+        sueldo_basico: funcionarioSeleccionado.remuneracion || "",
+      }));
+    }
+  }, [form.id_funcionario, funcionarioSeleccionado]);
 
-  const addDetalle = () => {
-    if (!newDet.concepto || !newDet.monto) return;
-    setDetalles(d => [...d, { ...newDet, monto: parseFloat(newDet.monto) }]);
-    setNewDet({ ...EMPTY_DETALLE });
+  const bonos = detalles.filter((d) => d.tipo === "bono");
+  const descuentos = detalles.filter((d) => d.tipo === "descuento");
+
+  const totalBonos = bonos.reduce((acc, item) => acc + Number(item.monto || 0), 0);
+  const totalDescuentos = descuentos.reduce((acc, item) => acc + Number(item.monto || 0), 0);
+  const totalPagado = Number(form.sueldo_basico || 0) + totalBonos - totalDescuentos;
+
+  const conceptosActuales =
+    nuevoDetalle.tipo === "bono" ? CONCEPTOS_BONO : CONCEPTOS_DESCUENTO;
+
+  const cambiarTipoDetalle = (tipo) => {
+    setNuevoDetalle({
+      tipo,
+      concepto: tipo === "bono" ? CONCEPTOS_BONO[0] : CONCEPTOS_DESCUENTO[0],
+      conceptoOtro: "",
+      monto: "",
+    });
   };
 
-  const removeDetalle = (i) => setDetalles(d => d.filter((_, idx) => idx !== i));
+  const agregarDetalle = () => {
+    const conceptoFinal =
+      nuevoDetalle.concepto === "Otro"
+        ? nuevoDetalle.conceptoOtro.trim()
+        : nuevoDetalle.concepto;
 
-  const valid = form.id_funcionario && form.mes && form.gestion && form.sueldo_basico;
+    if (!conceptoFinal || !nuevoDetalle.monto) {
+      Swal.fire({
+        icon: "warning",
+        title: "Completa el detalle",
+        text: "Debes ingresar concepto y monto.",
+        confirmButtonColor: "#2563eb",
+      });
+      return;
+    }
+
+    setDetalles((prev) => [
+      ...prev,
+      {
+        tipo: nuevoDetalle.tipo,
+        concepto: conceptoFinal,
+        monto: Number(nuevoDetalle.monto),
+      },
+    ]);
+
+    setNuevoDetalle({
+      ...EMPTY_DETALLE,
+      tipo: nuevoDetalle.tipo,
+      concepto: nuevoDetalle.tipo === "bono" ? CONCEPTOS_BONO[0] : CONCEPTOS_DESCUENTO[0],
+    });
+  };
+
+  const quitarDetalle = (index) => {
+    setDetalles((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const guardar = async () => {
+    if (!funcionarioSeleccionado?.correo && form.enviarCorreo) {
+      const result = await Swal.fire({
+        icon: "warning",
+        title: "Funcionario sin correo",
+        text: "La boleta se generará, pero no podrá enviarse por correo. ¿Deseas continuar?",
+        showCancelButton: true,
+        confirmButtonText: "Sí, generar",
+        cancelButtonText: "Cancelar",
+        confirmButtonColor: "#2563eb",
+      });
+
+      if (!result.isConfirmed) return;
+    }
+
+    const result = await Swal.fire({
+      icon: "question",
+      title: "Confirmar boleta",
+      html: `
+        <p>Se generará la boleta para <b>${funcionarioSeleccionado?.nombres} ${funcionarioSeleccionado?.apellidos}</b>.</p>
+        <p>Total a pagar: <b>${formatoBs(totalPagado)}</b></p>
+        ${form.enviarCorreo ? "<p>También se enviará al correo del funcionario.</p>" : ""}
+      `,
+      showCancelButton: true,
+      confirmButtonText: "Generar",
+      cancelButtonText: "Cancelar",
+      confirmButtonColor: "#2563eb",
+    });
+
+    if (!result.isConfirmed) return;
+
+    const bonosPayload = detalles
+      .filter((d) => d.tipo === "bono")
+      .map((d) => ({ concepto: d.concepto, monto: Number(d.monto) }));
+
+    const descuentosPayload = detalles
+      .filter((d) => d.tipo === "descuento")
+      .map((d) => ({ concepto: d.concepto, monto: Number(d.monto) }));
+
+    onSave({
+      id_funcionario: Number(form.id_funcionario),
+      mes: Number(form.mes),
+      gestion: Number(form.gestion),
+      sueldo_basico: Number(form.sueldo_basico),
+      bonos: bonosPayload,
+      descuentos: descuentosPayload,
+      enviarCorreo: form.enviarCorreo,
+    });
+  };
+
+  const valido = form.id_funcionario && form.mes && form.gestion && form.sueldo_basico;
 
   return (
-    <>
+    <div className={styles.formContent}>
       <div className={s.formGrid}>
         <div className={`${s.field} ${s.formGridFull}`}>
           <label className={`${s.label} ${s.required}`}>Funcionario</label>
-          <select className={s.select} value={form.id_funcionario} onChange={e => setF('id_funcionario', Number(e.target.value))}>
-            <option value="">Seleccionar...</option>
-            {funcionarios.map(f => <option key={f.id_funcionario} value={f.id_funcionario}>{f.nombres} {f.apellidos}</option>)}
+          <select
+            className={s.select}
+            value={form.id_funcionario}
+            onChange={(e) =>
+              setForm((prev) => ({ ...prev, id_funcionario: e.target.value }))
+            }
+          >
+            <option value="">Seleccionar funcionario...</option>
+            {funcionarios.map((f) => (
+              <option key={f.id_funcionario} value={f.id_funcionario}>
+                {f.nombres} {f.apellidos} - {f.ci}
+              </option>
+            ))}
           </select>
         </div>
+
+        {funcionarioSeleccionado && (
+          <div className={`${s.field} ${s.formGridFull}`}>
+            <div className={styles.funcionarioCard}>
+              <div>
+                <strong>{funcionarioSeleccionado.nombres} {funcionarioSeleccionado.apellidos}</strong>
+                <span>CI: {funcionarioSeleccionado.ci}</span>
+              </div>
+              <div>
+                <span>Área: {funcionarioSeleccionado.area || "No asignada"}</span>
+                <span>Cargo: {funcionarioSeleccionado.cargo || "No asignado"}</span>
+              </div>
+              <div>
+                <span>Correo: {funcionarioSeleccionado.correo || "Sin correo"}</span>
+                <span>Remuneración: {formatoBs(funcionarioSeleccionado.remuneracion)}</span>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className={s.field}>
           <label className={`${s.label} ${s.required}`}>Mes</label>
-          <select className={s.select} value={form.mes} onChange={e => setF('mes', Number(e.target.value))}>
-            {MESES.map((m, i) => <option key={i+1} value={i+1}>{m}</option>)}
+          <select
+            className={s.select}
+            value={form.mes}
+            onChange={(e) =>
+              setForm((prev) => ({ ...prev, mes: Number(e.target.value) }))
+            }
+          >
+            {MESES.map((mes, index) => (
+              <option key={index + 1} value={index + 1}>{mes}</option>
+            ))}
           </select>
         </div>
+
         <div className={s.field}>
           <label className={`${s.label} ${s.required}`}>Gestión</label>
-          <input className={s.input} type="number" min="2000" value={form.gestion} onChange={e => setF('gestion', parseInt(e.target.value))} />
+          <input
+            className={s.input}
+            type="number"
+            value={form.gestion}
+            onChange={(e) =>
+              setForm((prev) => ({ ...prev, gestion: e.target.value }))
+            }
+          />
         </div>
+
         <div className={s.field}>
-          <label className={`${s.label} ${s.required}`}>Sueldo básico (Bs.)</label>
-          <input className={s.input} type="number" step="0.01" value={form.sueldo_basico} onChange={e => setF('sueldo_basico', e.target.value)} placeholder="0.00" />
-        </div>
-        <div className={s.field}>
-          <label className={s.label}>Fecha de pago</label>
-          <input className={s.input} type="date" value={form.fecha_pago || ''} onChange={e => setF('fecha_pago', e.target.value)} />
-        </div>
-        <div className={s.field}>
-          <label className={s.label}>Estado</label>
-          <select className={s.select} value={form.estado} onChange={e => setF('estado', e.target.value)}>
-            {ESTADOS_BOLETA.map(e => <option key={e} value={e}>{e.charAt(0).toUpperCase() + e.slice(1)}</option>)}
-          </select>
+          <label className={`${s.label} ${s.required}`}>Sueldo básico</label>
+          <input
+            className={s.input}
+            type="number"
+            step="0.01"
+            value={form.sueldo_basico}
+            onChange={(e) =>
+              setForm((prev) => ({ ...prev, sueldo_basico: e.target.value }))
+            }
+          />
         </div>
       </div>
 
-      {/* Detalle */}
+      <div className={styles.emailBox}>
+        <label>
+          <input
+            type="checkbox"
+            checked={form.enviarCorreo}
+            onChange={(e) =>
+              setForm((prev) => ({ ...prev, enviarCorreo: e.target.checked }))
+            }
+          />
+          Enviar automáticamente al correo del funcionario al generar la boleta
+        </label>
+      </div>
+
       <div className={styles.detalleSection}>
-        <div className={styles.detalleSectionTitle}>Bonos y Descuentos</div>
-        <div className={styles.detalleForm}>
-          <select className={s.select} style={{ width: 120 }} value={newDet.tipo} onChange={e => setNewDet(d => ({ ...d, tipo: e.target.value }))}>
-            {TIPOS.map(t => <option key={t} value={t}>{t.charAt(0).toUpperCase() + t.slice(1)}</option>)}
+        <div className={styles.detalleSectionTitle}>Bonos y descuentos</div>
+
+        <div className={styles.detalleFormImproved}>
+          <select
+            className={s.select}
+            value={nuevoDetalle.tipo}
+            onChange={(e) => cambiarTipoDetalle(e.target.value)}
+          >
+            <option value="bono">Bono</option>
+            <option value="descuento">Descuento</option>
           </select>
-          <input className={s.input} placeholder="Concepto" value={newDet.concepto} onChange={e => setNewDet(d => ({ ...d, concepto: e.target.value }))} style={{ flex: 1 }} />
-          <input className={s.input} type="number" placeholder="Monto" value={newDet.monto} onChange={e => setNewDet(d => ({ ...d, monto: e.target.value }))} style={{ width: 120 }} />
-          <button className={`${s.btn} ${s.btnPrimary} ${s.btnSm}`} onClick={addDetalle}>+ Añadir</button>
+
+          <select
+            className={s.select}
+            value={nuevoDetalle.concepto}
+            onChange={(e) =>
+              setNuevoDetalle((prev) => ({
+                ...prev,
+                concepto: e.target.value,
+                conceptoOtro: "",
+              }))
+            }
+          >
+            {conceptosActuales.map((concepto) => (
+              <option key={concepto} value={concepto}>{concepto}</option>
+            ))}
+          </select>
+
+          {nuevoDetalle.concepto === "Otro" && (
+            <input
+              className={s.input}
+              placeholder="Especificar concepto"
+              value={nuevoDetalle.conceptoOtro}
+              onChange={(e) =>
+                setNuevoDetalle((prev) => ({ ...prev, conceptoOtro: e.target.value }))
+              }
+            />
+          )}
+
+          <input
+            className={s.input}
+            type="number"
+            step="0.01"
+            placeholder="Monto"
+            value={nuevoDetalle.monto}
+            onChange={(e) =>
+              setNuevoDetalle((prev) => ({ ...prev, monto: e.target.value }))
+            }
+          />
+
+          <button
+            type="button"
+            className={`${s.btn} ${s.btnPrimary}`}
+            onClick={agregarDetalle}
+          >
+            <FaPlus /> Añadir
+          </button>
         </div>
+
         {detalles.length > 0 && (
-          <table className={s.table} style={{ marginTop: 8, borderRadius: 8, overflow: 'hidden' }}>
-            <thead><tr><th>Tipo</th><th>Concepto</th><th>Monto</th><th></th></tr></thead>
+          <div className={styles.detalleList}>
+            {detalles.map((detalle, index) => (
+              <div key={index} className={styles.detalleItem}>
+                <span
+                  className={`${styles.tipoChip} ${
+                    detalle.tipo === "bono" ? styles.chipBono : styles.chipDescuento
+                  }`}
+                >
+                  {detalle.tipo}
+                </span>
+                <span className={styles.detalleConcepto}>{detalle.concepto}</span>
+                <strong>{formatoBs(detalle.monto)}</strong>
+                <button onClick={() => quitarDetalle(index)} type="button">
+                  <FaTimes />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className={styles.totales}>
+        <div className={styles.totalesRow}>
+          <span>Sueldo básico</span>
+          <span>{formatoBs(form.sueldo_basico)}</span>
+        </div>
+        <div className={styles.totalesRow}>
+          <span>Total bonos</span>
+          <span className={styles.montoPositivo}>{formatoBs(totalBonos)}</span>
+        </div>
+        <div className={styles.totalesRow}>
+          <span>Total descuentos</span>
+          <span className={styles.montoNegativo}>{formatoBs(totalDescuentos)}</span>
+        </div>
+        <div className={`${styles.totalesRow} ${styles.totalesTotal}`}>
+          <span>Total pagado</span>
+          <span>{formatoBs(totalPagado)}</span>
+        </div>
+      </div>
+
+      <div className={styles.modalActions}>
+        <button className={`${s.btn} ${s.btnSecondary}`} onClick={onCancel}>
+          Cancelar
+        </button>
+        <button
+          className={`${s.btn} ${s.btnPrimary}`}
+          onClick={guardar}
+          disabled={!valido}
+        >
+          <FaCheckCircle /> Generar boleta
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function DetalleModal({ boletaId, onClose }) {
+  const [loading, setLoading] = useState(false);
+  const [boleta, setBoleta] = useState(null);
+  const [detalle, setDetalle] = useState([]);
+
+  useEffect(() => {
+    if (!boletaId) return;
+
+    const cargar = async () => {
+      setLoading(true);
+      try {
+        const data = await boletasService.obtenerBoletaPorId(boletaId);
+        setBoleta(data.boleta);
+        setDetalle(data.detalle || []);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    cargar();
+  }, [boletaId]);
+
+  return (
+    <Modal open={!!boletaId} onClose={onClose} title="Detalle de boleta" large>
+      {loading || !boleta ? (
+        <div className={s.loading}>Cargando...</div>
+      ) : (
+        <div className={styles.detalleModalContent}>
+          <div className={styles.funcionarioCard}>
+            <div>
+              <strong>{boleta.nombres} {boleta.apellidos}</strong>
+              <span>CI: {boleta.ci}</span>
+            </div>
+            <div>
+              <span>Área: {boleta.area || "No asignada"}</span>
+              <span>Cargo: {boleta.cargo || "No asignado"}</span>
+            </div>
+            <div>
+              <span>Correo: {boleta.correo || "Sin correo"}</span>
+              <span>Periodo: {MESES[boleta.mes - 1]} {boleta.gestion}</span>
+            </div>
+          </div>
+
+          <div className={styles.totales}>
+            <div className={styles.totalesRow}>
+              <span>Sueldo básico</span>
+              <span>{formatoBs(boleta.sueldo_basico)}</span>
+            </div>
+            <div className={styles.totalesRow}>
+              <span>Total bonos</span>
+              <span className={styles.montoPositivo}>{formatoBs(boleta.total_bonos)}</span>
+            </div>
+            <div className={styles.totalesRow}>
+              <span>Total descuentos</span>
+              <span className={styles.montoNegativo}>{formatoBs(boleta.total_descuentos)}</span>
+            </div>
+            <div className={`${styles.totalesRow} ${styles.totalesTotal}`}>
+              <span>Total pagado</span>
+              <span>{formatoBs(boleta.total_pagado)}</span>
+            </div>
+          </div>
+
+          {detalle.length > 0 ? (
+            <div className={styles.detalleList}>
+              {detalle.map((d) => (
+                <div key={d.id_detalle} className={styles.detalleItem}>
+                  <span
+                    className={`${styles.tipoChip} ${
+                      d.tipo === "bono" ? styles.chipBono : styles.chipDescuento
+                    }`}
+                  >
+                    {d.tipo}
+                  </span>
+                  <span className={styles.detalleConcepto}>{d.concepto}</span>
+                  <strong>{formatoBs(d.monto)}</strong>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className={s.empty}>
+              <div className={s.emptyText}>Sin detalles registrados</div>
+            </div>
+          )}
+        </div>
+      )}
+    </Modal>
+  );
+}
+
+export default function Boletas() {
+  const [boletas, setBoletas] = useState([]);
+  const [funcionarios, setFuncionarios] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [modalCrear, setModalCrear] = useState(false);
+  const [detalleId, setDetalleId] = useState(null);
+  const [search, setSearch] = useState("");
+
+  const cargarDatos = async () => {
+    setLoading(true);
+    try {
+      const [resBoletas, resFuncionarios] = await Promise.all([
+        boletasService.listarBoletas(),
+        boletasService.listarFuncionarios(),
+      ]);
+
+      setBoletas(resBoletas.boletas || []);
+      setFuncionarios(resFuncionarios.funcionarios || []);
+    } catch (error) {
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "No se pudo cargar la información del módulo de boletas.",
+        confirmButtonColor: "#2563eb",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    cargarDatos();
+  }, []);
+
+  const crearBoleta = async (payload) => {
+    try {
+      const creada = await boletasService.crearBoleta(payload);
+      const idBoleta = creada.boleta?.id_boleta;
+
+      if (payload.enviarCorreo && idBoleta) {
+        await boletasService.enviarBoletaCorreo(idBoleta);
+
+        Swal.fire({
+          icon: "success",
+          title: "Boleta generada y enviada",
+          text: "La boleta fue generada correctamente y enviada al correo del funcionario.",
+          confirmButtonColor: "#2563eb",
+        });
+      } else {
+        Swal.fire({
+          icon: "success",
+          title: "Boleta generada",
+          text: "La boleta fue generada correctamente.",
+          confirmButtonColor: "#2563eb",
+        });
+      }
+
+      setModalCrear(false);
+      cargarDatos();
+    } catch (error) {
+      Swal.fire({
+        icon: "error",
+        title: "No se pudo generar la boleta",
+        text: error.response?.data?.msg || error.message || "Ocurrió un error.",
+        confirmButtonColor: "#2563eb",
+      });
+    }
+  };
+
+  const enviarCorreo = async (idBoleta) => {
+    const result = await Swal.fire({
+      icon: "question",
+      title: "Enviar boleta",
+      text: "Se enviará la boleta al correo registrado del funcionario.",
+      showCancelButton: true,
+      confirmButtonText: "Enviar",
+      cancelButtonText: "Cancelar",
+      confirmButtonColor: "#2563eb",
+    });
+
+    if (!result.isConfirmed) return;
+
+    try {
+      await boletasService.enviarBoletaCorreo(idBoleta);
+
+      Swal.fire({
+        icon: "success",
+        title: "Boleta enviada",
+        text: "El correo fue enviado correctamente.",
+        confirmButtonColor: "#2563eb",
+      });
+
+      cargarDatos();
+    } catch (error) {
+      Swal.fire({
+        icon: "error",
+        title: "No se pudo enviar",
+        text: error.response?.data?.msg || error.message || "Ocurrió un error.",
+        confirmButtonColor: "#2563eb",
+      });
+    }
+  };
+
+  const filtradas = boletas.filter((b) => {
+    const texto = `${b.funcionario || ""} ${b.ci || ""} ${b.correo || ""}`.toLowerCase();
+    return texto.includes(search.toLowerCase());
+  });
+
+  return (
+    <div>
+      <div className={s.pageHeader}>
+        <div>
+          <div className={s.pageHeading}>Boletas de Pago</div>
+          <div className={s.pageSubheading}>
+            Gestión de pagos, bonos, descuentos y envío de comprobantes
+          </div>
+        </div>
+
+        <button
+          className={`${s.btn} ${s.btnPrimary}`}
+          onClick={() => setModalCrear(true)}
+        >
+          <FaPlus /> Nueva boleta
+        </button>
+      </div>
+
+      <div className={styles.statsGrid}>
+        <div className={styles.statCard}>
+          <span>Boletas generadas</span>
+          <strong>{boletas.length}</strong>
+        </div>
+        <div className={styles.statCard}>
+          <span>Funcionarios activos</span>
+          <strong>{funcionarios.length}</strong>
+        </div>
+        <div className={styles.statCard}>
+          <span>Total pagado</span>
+          <strong>
+            {formatoBs(boletas.reduce((acc, b) => acc + Number(b.total_pagado || 0), 0))}
+          </strong>
+        </div>
+      </div>
+
+      <div className={s.tableWrapper}>
+        <div className={s.tableToolbar}>
+          <input
+            className={s.searchInput}
+            placeholder="Buscar por funcionario, CI o correo..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+
+        {loading ? (
+          <div className={s.loading}>Cargando...</div>
+        ) : filtradas.length === 0 ? (
+          <div className={s.empty}>
+            <div className={s.emptyText}>No hay boletas registradas</div>
+          </div>
+        ) : (
+          <table className={s.table}>
+            <thead>
+              <tr>
+                <th>Funcionario</th>
+                <th>Periodo</th>
+                <th>Área / Cargo</th>
+                <th>Sueldo</th>
+                <th>Bonos</th>
+                <th>Descuentos</th>
+                <th>Total</th>
+                <th>Estado</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+
             <tbody>
-              {detalles.map((d, i) => (
-                <tr key={i}>
-                  <td><span className={`${s.badge} ${d.tipo === 'bono' ? s.badgeSuccess : s.badgeDanger}`}>{d.tipo}</span></td>
-                  <td>{d.concepto}</td>
-                  <td>Bs. {Number(d.monto).toFixed(2)}</td>
-                  <td><button className={`${s.btn} ${s.btnDanger} ${s.btnSm}`} onClick={() => removeDetalle(i)}>✕</button></td>
+              {filtradas.map((b) => (
+                <tr key={b.id_boleta}>
+                  <td>
+                    <strong>{b.funcionario}</strong>
+                    <br />
+                    <small>{b.correo || "Sin correo"}</small>
+                  </td>
+                  <td>{MESES[b.mes - 1]} {b.gestion}</td>
+                  <td>
+                    <span>{b.area || "Sin área"}</span>
+                    <br />
+                    <small>{b.cargo || "Sin cargo"}</small>
+                  </td>
+                  <td>{formatoBs(b.sueldo_basico)}</td>
+                  <td className={styles.montoPositivo}>{formatoBs(b.total_bonos)}</td>
+                  <td className={styles.montoNegativo}>{formatoBs(b.total_descuentos)}</td>
+                  <td>
+                    <strong>{formatoBs(b.total_pagado)}</strong>
+                  </td>
+                  <td>
+                    <span
+                      className={`${styles.estadoChip} ${
+                        b.estado === "enviada" ? styles.estadoEnviada : styles.estadoGenerada
+                      }`}
+                    >
+                      {b.estado}
+                    </span>
+                  </td>
+                  <td>
+                    <div className={s.actions}>
+                      <button
+                        className={`${s.btn} ${s.btnSecondary} ${s.btnSm}`}
+                        onClick={() => setDetalleId(b.id_boleta)}
+                        title="Ver detalle"
+                      >
+                        <FaEye />
+                      </button>
+
+                      <button
+                        className={`${s.btn} ${s.btnPrimary} ${s.btnSm}`}
+                        onClick={() => enviarCorreo(b.id_boleta)}
+                        title="Enviar correo"
+                      >
+                        <FaEnvelope />
+                      </button>
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -106,172 +699,20 @@ function BoletaForm({ initial, funcionarios, onSave, onCancel }) {
         )}
       </div>
 
-      {/* Totales */}
-      <div className={styles.totales}>
-        <div className={styles.totalesRow}><span>Sueldo básico</span><span>Bs. {Number(form.sueldo_basico || 0).toFixed(2)}</span></div>
-        <div className={styles.totalesRow}><span>+ Total bonos</span><span style={{ color: 'var(--success)' }}>Bs. {Number(form.total_bonos).toFixed(2)}</span></div>
-        <div className={styles.totalesRow}><span>− Total descuentos</span><span style={{ color: 'var(--danger)' }}>Bs. {Number(form.total_descuentos).toFixed(2)}</span></div>
-        <div className={`${styles.totalesRow} ${styles.totalesTotal}`}><span>Total a pagar</span><span>Bs. {Number(form.total_pagado || 0).toFixed(2)}</span></div>
-      </div>
-
-      <div style={{ marginTop: 20, display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-        <button className={`${s.btn} ${s.btnSecondary}`} onClick={onCancel}>Cancelar</button>
-        <button className={`${s.btn} ${s.btnPrimary}`} onClick={() => onSave(form, detalles)} disabled={!valid}>
-          {initial?.id_boleta ? 'Guardar cambios' : 'Generar boleta'}
-        </button>
-      </div>
-    </>
-  );
-}
-
-function DetalleModal({ boleta, onClose }) {
-  const [detalles, setDetalles] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (!boleta) return;
-    store.getDetallesBoleta(boleta.id_boleta).then(d => { setDetalles(d); setLoading(false); });
-  }, [boleta]);
-
-  return (
-    <Modal open={!!boleta} onClose={onClose} title="Detalle de boleta" large>
-      {loading ? <div className={s.loading}>Cargando...</div> : (
-        <div>
-          <div className={styles.totales}>
-            <div className={styles.totalesRow}><span>Sueldo básico</span><span>Bs. {Number(boleta?.sueldo_basico).toFixed(2)}</span></div>
-            <div className={styles.totalesRow}><span>Total bonos</span><span style={{ color: 'var(--success)' }}>Bs. {Number(boleta?.total_bonos).toFixed(2)}</span></div>
-            <div className={styles.totalesRow}><span>Total descuentos</span><span style={{ color: 'var(--danger)' }}>Bs. {Number(boleta?.total_descuentos).toFixed(2)}</span></div>
-            <div className={`${styles.totalesRow} ${styles.totalesTotal}`}><span>Total pagado</span><span>Bs. {Number(boleta?.total_pagado).toFixed(2)}</span></div>
-          </div>
-          {detalles.length > 0 ? (
-            <table className={s.table} style={{ marginTop: 16 }}>
-              <thead><tr><th>Tipo</th><th>Concepto</th><th>Monto</th></tr></thead>
-              <tbody>
-                {detalles.map(d => (
-                  <tr key={d.id_detalle}>
-                    <td><span className={`${s.badge} ${d.tipo === 'bono' ? s.badgeSuccess : s.badgeDanger}`}>{d.tipo}</span></td>
-                    <td>{d.concepto}</td>
-                    <td>Bs. {Number(d.monto).toFixed(2)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          ) : <div className={s.empty}><div className={s.emptyText}>Sin detalles registrados</div></div>}
-        </div>
-      )}
-    </Modal>
-  );
-}
-
-const estadoBadge = (e) => ({ generada: s.badgeAccent, pagada: s.badgeSuccess, anulada: s.badgeDanger }[e] || s.badgeAccent);
-
-export default function Boletas() {
-  const [boletas, setBoletas] = useState([]);
-  const [funcionarios, setFuncionarios] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [modal, setModal] = useState(null);
-  const [detailBoleta, setDetailBoleta] = useState(null);
-  const [search, setSearch] = useState('');
-
-  const load = async () => {
-    setLoading(true);
-    const [b, f] = await Promise.all([store.getBoletas(), store.getFuncionarios()]);
-    setBoletas(b); setFuncionarios(f); setLoading(false);
-  };
-  useEffect(() => { load(); }, []);
-
-  const getFunc = (id) => funcionarios.find(f => f.id_funcionario === id);
-
-  const filtered = boletas.filter(b => {
-    const f = getFunc(b.id_funcionario);
-    return !search || `${f?.nombres} ${f?.apellidos}`.toLowerCase().includes(search.toLowerCase());
-  });
-
-  const handleSave = async (form, detalles) => {
-    const data = { ...form, sueldo_basico: parseFloat(form.sueldo_basico), total_pagado: parseFloat(form.total_pagado) };
-    if (modal.data?.id_boleta) await store.updateBoleta(modal.data.id_boleta, data);
-    else await store.createBoleta(data, detalles);
-    setModal(null); load();
-  };
-
-  const handleDelete = async () => { await store.deleteBoleta(modal.data.id_boleta); setModal(null); load(); };
-
-  const totalPagado = boletas.reduce((a, b) => a + Number(b.total_pagado), 0);
-  const pagadas = boletas.filter(b => b.estado === 'pagada').length;
-
-  return (
-    <div>
-      <div className={s.pageHeader}>
-        <div>
-          <div className={s.pageHeading}>Boletas de Pago</div>
-          <div className={s.pageSubheading}>Gestión de nómina y comprobantes de pago</div>
-        </div>
-        <button className={`${s.btn} ${s.btnPrimary}`} onClick={() => setModal({ mode: 'create' })}>
-          + Nueva boleta
-        </button>
-      </div>
-
-
-      <div className={s.tableWrapper}>
-        <div className={s.tableToolbar}>
-          <input className={s.searchInput} placeholder="🔍 Buscar funcionario..." value={search} onChange={e => setSearch(e.target.value)} />
-        </div>
-        {loading ? <div className={s.loading}>Cargando...</div> :
-          filtered.length === 0 ? <div className={s.empty}><div className={s.emptyIcon}>💰</div><div className={s.emptyText}>No hay boletas</div></div> :
-          <table className={s.table}>
-            <thead><tr><th>Funcionario</th><th>Período</th><th>Sueldo básico</th><th>Bonos</th><th>Descuentos</th><th>Total pagado</th><th>Estado</th><th>Acciones</th></tr></thead>
-            <tbody>
-              {filtered.map(b => {
-                const f = getFunc(b.id_funcionario);
-                return (
-                  <tr key={b.id_boleta}>
-                    <td><strong>{f?.nombres} {f?.apellidos}</strong></td>
-                    <td>{MESES[b.mes - 1]} {b.gestion}</td>
-                    <td>Bs. {Number(b.sueldo_basico).toFixed(2)}</td>
-                    <td style={{ color: 'var(--success)' }}>+ Bs. {Number(b.total_bonos).toFixed(2)}</td>
-                    <td style={{ color: 'var(--danger)' }}>− Bs. {Number(b.total_descuentos).toFixed(2)}</td>
-                    <td style={{ fontWeight: 700, fontSize: 15 }}>Bs. {Number(b.total_pagado).toFixed(2)}</td>
-                    <td><span className={`${s.badge} ${estadoBadge(b.estado)}`}>{b.estado}</span></td>
-                    <td>
-                      <div className={s.actions}>
-                        <button className={`${s.btn} ${s.btnSecondary} ${s.btnSm}`} onClick={() => setDetailBoleta(b)}>👁 Detalle</button>
-                        <button className={`${s.btn} ${s.btnSecondary} ${s.btnSm}`} onClick={() => setModal({ mode: 'edit', data: b })}>✏️</button>
-                        <button className={`${s.btn} ${s.btnDanger} ${s.btnSm}`} onClick={() => setModal({ mode: 'delete', data: b })}>🗑️</button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        }
-      </div>
-
       <Modal
-        open={modal?.mode === 'create' || modal?.mode === 'edit'}
-        onClose={() => setModal(null)}
-        title={modal?.mode === 'edit' ? 'Editar boleta' : 'Nueva boleta de pago'}
+        open={modalCrear}
+        onClose={() => setModalCrear(false)}
+        title="Nueva boleta de pago"
         large
       >
-        <BoletaForm funcionarios={funcionarios} initial={modal?.data} onSave={handleSave} onCancel={() => setModal(null)} />
+        <BoletaForm
+          funcionarios={funcionarios}
+          onSave={crearBoleta}
+          onCancel={() => setModalCrear(false)}
+        />
       </Modal>
 
-      <DetalleModal boleta={detailBoleta} onClose={() => setDetailBoleta(null)} />
-
-      <Modal
-        open={modal?.mode === 'delete'}
-        onClose={() => setModal(null)}
-        title="Eliminar boleta"
-        footer={<>
-          <button className={`${s.btn} ${s.btnSecondary}`} onClick={() => setModal(null)}>Cancelar</button>
-          <button className={`${s.btn} ${s.btnDanger}`} onClick={handleDelete}>Sí, eliminar</button>
-        </>}
-      >
-        <div className={s.confirmBody}>
-          <div className={s.confirmIcon}>⚠️</div>
-          <div className={s.confirmText}>¿Eliminar esta boleta de pago?</div>
-        </div>
-      </Modal>
+      <DetalleModal boletaId={detalleId} onClose={() => setDetalleId(null)} />
     </div>
   );
 }
