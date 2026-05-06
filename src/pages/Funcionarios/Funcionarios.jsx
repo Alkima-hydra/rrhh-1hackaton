@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import Modal from '../../components/Modal/Modal';
 import s from '../../styles/shared.module.css';
 import { funcionariosService } from '../../lib/funcionarios.service';
 import { cargosService } from '../../lib/cargos.service';
+import { fetchAreas, selectAreas } from '../../store/slice/areasSlice';
 
 const EMPTY = {
   nombres: '', apellidos: '', ci: '', correo: '', telefono: '',
@@ -91,8 +93,10 @@ function FuncionarioForm({ initial, areas, allCargos, onSave, onCancel }) {
 }
 
 export default function Funcionarios() {
+  const dispatch = useDispatch();
+  const areas = useSelector(selectAreas);
+
   const [funcionarios, setFuncionarios] = useState([]);
-  const [areas, setAreas] = useState([]);
   const [cargos, setCargos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -100,15 +104,24 @@ export default function Funcionarios() {
 
   const load = async () => {
     setLoading(true);
-    const [f, c] = await Promise.all([
-      funcionariosService.getAll(),
-      cargosService.getAll(),
-    ]);
-    setFuncionarios(f.data.funcionarios ?? []);
-    setCargos(c.data.cargos ?? []);
-    setLoading(false);
+    try {
+      const [f, c] = await Promise.all([
+        funcionariosService.getAll(),
+        cargosService.getAll(),
+      ]);
+      setFuncionarios(f.data.funcionarios ?? []);
+      setCargos(c.data.cargos ?? []);
+    } catch (err) {
+      console.error('Error en load:', err);
+    } finally {
+      setLoading(false);
+    }
   };
-  useEffect(() => { load(); }, []);
+
+  useEffect(() => {
+    load();
+    dispatch(fetchAreas());
+  }, []);
 
   const filtered = funcionarios.filter(f =>
     `${f.nombres} ${f.apellidos} ${f.ci}`.toLowerCase().includes(search.toLowerCase())
@@ -119,11 +132,19 @@ export default function Funcionarios() {
 
   const handleSave = async (form) => {
     const data = {
-      ...form,
+      nombres: form.nombres,
+      apellidos: form.apellidos,
+      ci: form.ci,
       id_area: form.id_area || null,
       id_cargo: form.id_cargo || null,
       remuneracion: parseFloat(form.remuneracion),
+      fecha_ingreso: form.fecha_ingreso,
     };
+    if (form.correo) data.correo = form.correo;
+    if (form.telefono) data.telefono = form.telefono;
+    if (form.direccion) data.direccion = form.direccion;
+    if (form.ratificado !== undefined) data.ratificado = form.ratificado;
+
     if (modal.data?.id_funcionario) {
       await funcionariosService.update(modal.data.id_funcionario, data);
     } else {
@@ -138,9 +159,6 @@ export default function Funcionarios() {
     setModal(null);
     load();
   };
-
-  const activos = funcionarios.filter(f => f.activo).length;
-  const ratificados = funcionarios.filter(f => f.ratificado).length;
 
   return (
     <div>
@@ -214,16 +232,16 @@ export default function Funcionarios() {
       <Modal
         open={modal?.mode === 'delete'}
         onClose={() => setModal(null)}
-        title="Eliminar funcionario"
+        title="Dar de baja funcionario"
         footer={<>
           <button className={`${s.btn} ${s.btnSecondary}`} onClick={() => setModal(null)}>Cancelar</button>
-          <button className={`${s.btn} ${s.btnDanger}`} onClick={handleDelete}>Sí, eliminar</button>
+          <button className={`${s.btn} ${s.btnDanger}`} onClick={handleDelete}>Sí, dar de baja</button>
         </>}
       >
         <div className={s.confirmBody}>
           <div className={s.confirmIcon}>⚠️</div>
           <strong>{modal?.data?.nombres} {modal?.data?.apellidos}</strong>
-          <div className={s.confirmText}>¿Eliminar este funcionario? Esta acción no se puede deshacer.</div>
+          <div className={s.confirmText}>¿Dar de baja a este funcionario? Su estado cambiará a inactivo.</div>
         </div>
       </Modal>
     </div>
