@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import Swal from 'sweetalert2';
 
 import Modal from '../../components/Modal/Modal';
 import s from '../../styles/shared.module.css';
@@ -26,6 +27,20 @@ const EMPTY = {
   fecha_fin: '',
 };
 
+const calcularDiasEntreFechas = (fechaInicio, fechaFin) => {
+  if (!fechaInicio || !fechaFin) return '';
+
+  const inicio = new Date(fechaInicio);
+  const fin = new Date(fechaFin);
+
+  inicio.setHours(0, 0, 0, 0);
+  fin.setHours(0, 0, 0, 0);
+
+  const dias = Math.floor((fin - inicio) / (1000 * 60 * 60 * 24)) + 1;
+
+  return dias > 0 ? dias : '';
+};
+
 function VacacionForm({ funcionarios, onSave, onCancel }) {
   const [form, setForm] = useState(EMPTY);
 
@@ -33,6 +48,26 @@ function VacacionForm({ funcionarios, onSave, onCancel }) {
     setForm((prev) => ({
       ...prev,
       [key]: value,
+    }));
+  };
+
+  const handleFechaInicio = (value) => {
+    const dias = calcularDiasEntreFechas(value, form.fecha_fin);
+
+    setForm((prev) => ({
+      ...prev,
+      fecha_inicio: value,
+      dias_solicitados: dias,
+    }));
+  };
+
+  const handleFechaFin = (value) => {
+    const dias = calcularDiasEntreFechas(form.fecha_inicio, value);
+
+    setForm((prev) => ({
+      ...prev,
+      fecha_fin: value,
+      dias_solicitados: dias,
     }));
   };
 
@@ -63,23 +98,12 @@ function VacacionForm({ funcionarios, onSave, onCancel }) {
         </div>
 
         <div className={s.field}>
-          <label className={`${s.label} ${s.required}`}>Días solicitados</label>
-          <input
-            className={s.input}
-            type="number"
-            min="1"
-            value={form.dias_solicitados}
-            onChange={(e) => set('dias_solicitados', e.target.value)}
-          />
-        </div>
-
-        <div className={s.field}>
           <label className={`${s.label} ${s.required}`}>Fecha inicio</label>
           <input
             className={s.input}
             type="date"
             value={form.fecha_inicio}
-            onChange={(e) => set('fecha_inicio', e.target.value)}
+            onChange={(e) => handleFechaInicio(e.target.value)}
           />
         </div>
 
@@ -89,7 +113,19 @@ function VacacionForm({ funcionarios, onSave, onCancel }) {
             className={s.input}
             type="date"
             value={form.fecha_fin}
-            onChange={(e) => set('fecha_fin', e.target.value)}
+            min={form.fecha_inicio || undefined}
+            onChange={(e) => handleFechaFin(e.target.value)}
+          />
+        </div>
+
+        <div className={s.field}>
+          <label className={`${s.label} ${s.required}`}>Días solicitados</label>
+          <input
+            className={s.input}
+            type="number"
+            value={form.dias_solicitados}
+            readOnly
+            style={{ opacity: 0.7 }}
           />
         </div>
       </div>
@@ -164,28 +200,74 @@ export default function Vacaciones() {
   });
 
   const handleSave = async (form) => {
-    const payload = {
-      id_funcionario: Number(form.id_funcionario),
-      dias_solicitados: Number(form.dias_solicitados),
-      fecha_inicio: form.fecha_inicio,
-      fecha_fin: form.fecha_fin,
-    };
+    try {
+      const diasCalculados = calcularDiasEntreFechas(
+        form.fecha_inicio,
+        form.fecha_fin
+      );
 
-    await dispatch(createVacacion(payload)).unwrap();
+      if (!diasCalculados || diasCalculados <= 0) {
+        Swal.fire({
+          icon: 'warning',
+          title: 'Fechas inválidas',
+          text: 'La fecha fin no puede ser menor que la fecha inicio.',
+        });
+        return;
+      }
 
-    setModal(null);
-    dispatch(fetchVacaciones());
+      const payload = {
+        id_funcionario: Number(form.id_funcionario),
+        dias_solicitados: Number(diasCalculados),
+        fecha_inicio: form.fecha_inicio,
+        fecha_fin: form.fecha_fin,
+      };
+
+      await dispatch(createVacacion(payload)).unwrap();
+
+      Swal.fire({
+        icon: 'success',
+        title: 'Solicitud registrada',
+        text: 'La solicitud de vacaciones fue registrada correctamente.',
+        timer: 1800,
+        showConfirmButton: false,
+      });
+
+      setModal(null);
+      dispatch(fetchVacaciones());
+    } catch (error) {
+      Swal.fire({
+        icon: 'error',
+        title: 'No se pudo registrar',
+        text: error || 'Ocurrió un error al registrar la solicitud.',
+      });
+    }
   };
 
   const handleCambiarEstado = async (idVacacion, estado) => {
-    await dispatch(
-      updateEstadoVacacion({
-        id: idVacacion,
-        estado,
-      })
-    ).unwrap();
+    try {
+      await dispatch(
+        updateEstadoVacacion({
+          id: idVacacion,
+          estado,
+        })
+      ).unwrap();
 
-    dispatch(fetchVacaciones());
+      Swal.fire({
+        icon: 'success',
+        title: 'Estado actualizado',
+        text: `La solicitud fue ${estado} correctamente.`,
+        timer: 1600,
+        showConfirmButton: false,
+      });
+
+      dispatch(fetchVacaciones());
+    } catch (error) {
+      Swal.fire({
+        icon: 'error',
+        title: 'No se pudo actualizar',
+        text: error || 'Ocurrió un error al cambiar el estado.',
+      });
+    }
   };
 
   const pendientes = vacaciones.filter((v) => v.estado === 'pendiente').length;
@@ -286,17 +368,9 @@ export default function Vacaciones() {
                     <td>{v.gestion}</td>
                     <td>{v.dias_disponibles}</td>
                     <td>{v.dias_solicitados}</td>
+                    <td style={{ fontWeight: 600 }}>{v.dias_restantes}</td>
 
-                    <td style={{ fontWeight: 600 }}>
-                      {v.dias_restantes}
-                    </td>
-
-                    <td
-                      style={{
-                        color: 'var(--text-secondary)',
-                        fontSize: 12,
-                      }}
-                    >
+                    <td style={{ color: 'var(--text-secondary)', fontSize: 12 }}>
                       {v.fecha_inicio
                         ? `${v.fecha_inicio} → ${v.fecha_fin || '?'}`
                         : '—'}
@@ -331,12 +405,7 @@ export default function Vacaciones() {
                             </button>
                           </>
                         ) : (
-                          <span
-                            style={{
-                              color: 'var(--text-secondary)',
-                              fontSize: 12,
-                            }}
-                          >
+                          <span style={{ color: 'var(--text-secondary)', fontSize: 12 }}>
                             Sin acciones
                           </span>
                         )}
