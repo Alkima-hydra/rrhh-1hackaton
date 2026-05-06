@@ -6,22 +6,18 @@ import s from '../../styles/shared.module.css';
 
 import {
   fetchVacaciones,
-  solicitarVacaciones,
-  cambiarEstadoVacacion,
-} from './slices/vacacionesThunk';
-
-import {
+  createVacacion,
+  updateEstadoVacacion,
   selectVacaciones,
   selectVacacionesLoading,
   selectVacacionesError,
-} from './slices/vacacionesSlices';
+} from '../../store/slice/vacacionesSlice';
 
-// Estos vendrían de tu otro slice de funcionarios
 import {
   fetchFuncionarios,
   selectFuncionarios,
   selectFuncionariosLoading,
-} from '../slicesFuncionarios/funcionariosSlices';
+} from '../../store/slice/funcionariosSlices';
 
 const EMPTY = {
   id_funcionario: '',
@@ -175,7 +171,7 @@ export default function Vacaciones() {
       fecha_fin: form.fecha_fin,
     };
 
-    await dispatch(solicitarVacaciones(payload)).unwrap();
+    await dispatch(createVacacion(payload)).unwrap();
 
     setModal(null);
     dispatch(fetchVacaciones());
@@ -183,8 +179,8 @@ export default function Vacaciones() {
 
   const handleCambiarEstado = async (idVacacion, estado) => {
     await dispatch(
-      cambiarEstadoVacacion({
-        idVacacion,
+      updateEstadoVacacion({
+        id: idVacacion,
         estado,
       })
     ).unwrap();
@@ -319,10 +315,7 @@ export default function Vacaciones() {
                             <button
                               className={`${s.btn} ${s.btnPrimary} ${s.btnSm}`}
                               onClick={() =>
-                                handleCambiarEstado(
-                                  v.id_vacacion,
-                                  'aprobada'
-                                )
+                                handleCambiarEstado(v.id_vacacion, 'aprobada')
                               }
                             >
                               Aprobar
@@ -331,10 +324,7 @@ export default function Vacaciones() {
                             <button
                               className={`${s.btn} ${s.btnDanger} ${s.btnSm}`}
                               onClick={() =>
-                                handleCambiarEstado(
-                                  v.id_vacacion,
-                                  'rechazada'
-                                )
+                                handleCambiarEstado(v.id_vacacion, 'rechazada')
                               }
                             >
                               Rechazar
