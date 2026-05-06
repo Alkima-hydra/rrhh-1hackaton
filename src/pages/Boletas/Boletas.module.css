@@ -1,31 +1,135 @@
+.formContent {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.funcionarioCard {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  padding: 16px;
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+}
+
+.funcionarioCard div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.funcionarioCard strong {
+  color: var(--text-primary);
+  font-size: 15px;
+}
+
+.funcionarioCard span {
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.emailBox {
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1e3a8a;
+  font-size: 14px;
+}
+
+.emailBox label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.emailBox input {
+  width: 16px;
+  height: 16px;
+}
+
 .detalleSection {
-  margin-top: 20px;
-  padding-top: 20px;
-  border-top: 1px solid var(--border);
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: #ffffff;
 }
 
 .detalleSectionTitle {
-  font-family: var(--font-display);
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 800;
   color: var(--text-secondary);
-  letter-spacing: 0.5px;
+  letter-spacing: 0.6px;
   text-transform: uppercase;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
 }
 
-.detalleForm {
-  display: flex;
-  gap: 8px;
+.detalleFormImproved {
+  display: grid;
+  grid-template-columns: 140px 1fr 1fr 140px auto;
+  gap: 10px;
   align-items: center;
-  flex-wrap: wrap;
+}
+
+.detalleList {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.detalleItem {
+  display: grid;
+  grid-template-columns: 110px 1fr 130px 36px;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  background: #f8fafc;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.detalleItem button {
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 10px;
+  background: #fee2e2;
+  color: #b91c1c;
+  cursor: pointer;
+}
+
+.detalleConcepto {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.tipoChip {
+  display: inline-flex;
+  justify-content: center;
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+
+.chipBono {
+  background: #dcfce7;
+  color: #047857;
+}
+
+.chipDescuento {
+  background: #fee2e2;
+  color: #b91c1c;
 }
 
 .totales {
-  margin-top: 20px;
-  background: var(--bg-secondary);
+  background: #f8fafc;
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  border-radius: 16px;
   overflow: hidden;
 }
 
@@ -33,17 +137,104 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 16px;
-  font-size: 13.5px;
+  padding: 13px 18px;
+  font-size: 14px;
   color: var(--text-secondary);
   border-bottom: 1px solid var(--border);
 }
 
-.totalesRow:last-child { border-bottom: none; }
+.totalesRow:last-child {
+  border-bottom: none;
+}
 
 .totalesTotal {
-  background: var(--accent-soft);
-  color: var(--text-primary);
+  background: #111827;
+  color: #ffffff;
+  font-weight: 800;
+  font-size: 16px;
+}
+
+.montoPositivo {
+  color: #047857;
   font-weight: 700;
-  font-size: 15px;
+}
+
+.montoNegativo {
+  color: #b91c1c;
+  font-weight: 700;
+}
+
+.modalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-top: 4px;
+}
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+  margin-bottom: 22px;
+}
+
+.statCard {
+  padding: 22px;
+  background: #ffffff;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+}
+
+.statCard span {
+  display: block;
+  color: var(--text-secondary);
+  font-size: 14px;
+  margin-bottom: 12px;
+}
+
+.statCard strong {
+  font-size: 28px;
+  color: var(--text-primary);
+}
+
+.estadoChip {
+  display: inline-flex;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: capitalize;
+}
+
+.estadoGenerada {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.estadoEnviada {
+  background: #dcfce7;
+  color: #047857;
+}
+
+.detalleModalContent {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+@media (max-width: 1100px) {
+  .detalleFormImproved {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .detalleItem {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 900px) {
+  .funcionarioCard,
+  .statsGrid {
+    grid-template-columns: 1fr;
+  }
 }
