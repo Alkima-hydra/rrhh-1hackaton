@@ -1,6 +1,12 @@
 import { useState, useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import Modal from '../../components/Modal/Modal';
 import { cargosService } from '../../lib/cargos.service';
+import {
+  fetchAreas,
+  selectAreas,
+  selectAreasLoading,
+} from '../../store/slice/areasSlice';
 import s from '../../styles/shared.module.css';
 
 function CargoForm({ initial, areas, onSave, onCancel }) {
@@ -44,11 +50,18 @@ function CargoForm({ initial, areas, onSave, onCancel }) {
 }
 
 export default function Cargos() {
+  const dispatch = useDispatch();
+  const areas = useSelector(selectAreas);
+  const areasLoading = useSelector(selectAreasLoading);  // ← reemplaza useState([]) de areas
+
   const [cargos, setCargos] = useState([]);
-  const [areas, setAreas] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [modal, setModal] = useState(null);
+
+  useEffect(() => {
+    if (areas.length === 0) dispatch(fetchAreas());
+  }, [dispatch]);
 
   const load = async () => {
     setLoading(true);
@@ -108,7 +121,7 @@ export default function Cargos() {
                   <td><strong>{c.nombre}</strong></td>
                   <td>
                     <span className={`${s.badge} ${s.badgeAccent}`}>
-                      {getArea(c.id_area)?.nombre || '—'}
+                      {areasLoading ? '...' : getArea(c.id_area)?.nombre || '—'}
                     </span>
                   </td>
                   <td style={{ color: 'var(--text-secondary)' }}>{c.descripcion || '—'}</td>

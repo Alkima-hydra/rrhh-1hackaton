@@ -7,5 +7,5 @@ export const funcionariosService = {
   getById:   (id)       => apiPersonal.get(`${EP}/${id}`),
   create:    (data)     => apiPersonal.post(EP, data),
   update:    (id, data) => apiPersonal.put(`${EP}/${id}`, data),
-  darDeBaja: (id)       => apiPersonal.patch(`${EP}/${id}/baja`),
+  darDeBaja: (id)       => apiPersonal.patch(`${EP}/${id}`),
 };

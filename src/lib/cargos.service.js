@@ -8,5 +8,5 @@ export const cargosService = {
   getByArea:  (idArea)   => apiPersonal.get(`${EP}/area/${idArea}`),
   create:     (data)     => apiPersonal.post(EP, data),
   update:     (id, data) => apiPersonal.put(`${EP}/${id}`, data),
-  desactivar: (id)       => apiPersonal.patch(`${EP}/${id}/desactivar`),
+  desactivar: (id)       => apiPersonal.patch(`${EP}/${id}`),
 };
