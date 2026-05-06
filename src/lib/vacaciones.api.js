@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_VACACIONES = "http://localhost:3002/api";
+const API_VACACIONES = "http://localhost:4002/api";
 
 const vacacionesApi = axios.create({
   baseURL: API_VACACIONES,
