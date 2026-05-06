@@ -17,11 +17,11 @@ import {
 } from './slices/vacacionesSlices';
 
 // Estos vendrían de tu otro slice de funcionarios
-import {
-  fetchFuncionarios,
-  selectFuncionarios,
-  selectFuncionariosLoading,
-} from '../slicesFuncionarios/funcionariosSlices';
+// import {
+//   fetchFuncionarios,
+//   selectFuncionarios,
+//   selectFuncionariosLoading,
+// } from '../slicesFuncionarios/funcionariosSlices';
 
 const EMPTY = {
   id_funcionario: '',
